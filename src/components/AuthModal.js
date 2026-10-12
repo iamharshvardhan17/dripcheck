@@ -40,18 +40,18 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
       if (mode === 'signup') {
-        const user = registerWithEmail({ name, email, password });
+        const user = await registerWithEmail({ name, email, password });
         if (onAuthSuccess) onAuthSuccess(user);
         onClose();
       } else {
-        const user = loginWithEmail({ email, password });
+        const user = await loginWithEmail({ email, password });
         if (onAuthSuccess) onAuthSuccess(user);
         onClose();
       }
@@ -62,14 +62,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setError('');
     setLoading(true);
     try {
-      // Direct Google Login
-      const user = loginWithGoogle();
-      if (onAuthSuccess) onAuthSuccess(user);
-      onClose();
+      const user = await loginWithGoogle();
+      if (user && onAuthSuccess) onAuthSuccess(user);
+      if (user) onClose();
     } catch (err) {
       setError(err.message || 'Google sign-in failed.');
     } finally {

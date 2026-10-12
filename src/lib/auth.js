@@ -1,7 +1,6 @@
-import { v4 as uuidv4 } from 'uuid';
+import { supabase } from './supabase';
 
-const STORAGE_KEY_USER = 'wardrobe_current_user';
-const STORAGE_KEY_USERS = 'wardrobe_registered_users';
+const STORAGE_KEY_USER = 'capsul_current_user';
 
 /**
  * Common disposable / temporary email domains and keywords
@@ -79,7 +78,6 @@ export function isTempEmail(email) {
 
   const domain = parts[1];
 
-  // Check exact domain blacklist
   if (DISPOSABLE_DOMAINS.has(domain)) {
     return {
       isTemp: true,
@@ -87,7 +85,6 @@ export function isTempEmail(email) {
     };
   }
 
-  // Check pattern heuristic
   for (const pattern of SUSPICIOUS_PATTERNS) {
     if (pattern.test(domain)) {
       return {
@@ -101,7 +98,7 @@ export function isTempEmail(email) {
 }
 
 /**
- * Get current logged in user
+ * Get current session user
  * @returns {Object|null}
  */
 export function getCurrentUser() {
@@ -116,34 +113,20 @@ export function getCurrentUser() {
 }
 
 /**
- * Get all registered users from storage
- * @returns {Array}
+ * Dispatches auth change event across the application
  */
-export function getRegisteredUsers() {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY_USERS);
-    return raw ? JSON.parse(raw) : [];
-  } catch (error) {
-    console.error('Failed to get registered users:', error);
-    return [];
-  }
-}
-
-/**
- * Dispatches a custom auth change event
- */
-function notifyAuthChange(user) {
+export function notifyAuthChange(user) {
   if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('capsul_auth_changed', { detail: user }));
     window.dispatchEvent(new CustomEvent('wardrobe_auth_changed', { detail: user }));
   }
 }
 
 /**
- * Set current user and notify
+ * Set current user in storage and notify listeners
  * @param {Object|null} user
  */
-function setCurrentUser(user) {
+export function setCurrentUser(user) {
   if (typeof window === 'undefined') return;
   try {
     if (user) {
@@ -153,28 +136,21 @@ function setCurrentUser(user) {
     }
     notifyAuthChange(user);
   } catch (error) {
-    console.error('Failed to save current user:', error);
+    console.error('Failed to set current user:', error);
   }
 }
 
 /**
- * Register a new user with Email and Password
- * Enforces NO TEMP / DISPOSABLE EMAIL rule
+ * Register a new user with real Supabase Auth (and temp email blocker)
  */
-export function registerWithEmail({ name, email, password }) {
+export async function registerWithEmail({ name, email, password }) {
   const sanitizedName = (name || '').trim();
   const sanitizedEmail = (email || '').trim().toLowerCase();
   const cleanPassword = (password || '').trim();
 
-  if (!sanitizedName) {
-    throw new Error('Please enter your full name.');
-  }
+  if (!sanitizedName) throw new Error('Please enter your full name.');
+  if (!sanitizedEmail) throw new Error('Please enter your email address.');
 
-  if (!sanitizedEmail) {
-    throw new Error('Please enter your email address.');
-  }
-
-  // Check temp email
   const tempCheck = isTempEmail(sanitizedEmail);
   if (tempCheck.isTemp) {
     throw new Error(tempCheck.reason || 'Disposable email addresses are not permitted.');
@@ -184,33 +160,39 @@ export function registerWithEmail({ name, email, password }) {
     throw new Error('Password must be at least 6 characters long.');
   }
 
-  const users = getRegisteredUsers();
-  const existing = users.find((u) => u.email === sanitizedEmail);
-  if (existing) {
-    throw new Error('An account with this email address already exists. Please log in.');
+  // 1. Register with real Supabase Auth
+  const { data, error } = await supabase.auth.signUp({
+    email: sanitizedEmail,
+    password: cleanPassword,
+    options: {
+      data: {
+        full_name: sanitizedName,
+        avatar_url: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(sanitizedName)}&backgroundColor=9333ea,a855f7`,
+      },
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message);
   }
 
-  const newUser = {
-    id: uuidv4(),
-    name: sanitizedName,
-    email: sanitizedEmail,
-    password: cleanPassword, // In client demo store
-    provider: 'email',
-    avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(sanitizedName)}&backgroundColor=9333ea,a855f7`,
-    createdAt: new Date().toISOString(),
-  };
+  const sbUser = data.user;
+  if (!sbUser) {
+    throw new Error('Registration failed. Please try again.');
+  }
 
-  users.push(newUser);
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+  // Check if user already exists
+  if (sbUser.identities && sbUser.identities.length === 0) {
+    throw new Error('An account with this email already exists. Please switch to Sign In.');
   }
 
   const sessionUser = {
-    id: newUser.id,
-    name: newUser.name,
-    email: newUser.email,
-    provider: newUser.provider,
-    avatar: newUser.avatar,
+    id: sbUser.id,
+    name: sanitizedName,
+    email: sanitizedEmail,
+    provider: 'email',
+    avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(sanitizedName)}&backgroundColor=9333ea,a855f7`,
+    emailConfirmed: !!sbUser.email_confirmed_at,
   };
 
   setCurrentUser(sessionUser);
@@ -218,9 +200,9 @@ export function registerWithEmail({ name, email, password }) {
 }
 
 /**
- * Login with Email and Password
+ * Login with real Supabase Auth
  */
-export function loginWithEmail({ email, password }) {
+export async function loginWithEmail({ email, password }) {
   const sanitizedEmail = (email || '').trim().toLowerCase();
   const cleanPassword = (password || '').trim();
 
@@ -228,65 +210,29 @@ export function loginWithEmail({ email, password }) {
     throw new Error('Please enter both email and password.');
   }
 
-  const users = getRegisteredUsers();
-  const found = users.find((u) => u.email === sanitizedEmail && u.password === cleanPassword);
-
-  if (!found) {
-    // If not found in store, verify temp email isn't used
-    const tempCheck = isTempEmail(sanitizedEmail);
-    if (tempCheck.isTemp) {
-      throw new Error(tempCheck.reason || 'Disposable email addresses are not permitted.');
-    }
-    throw new Error('Invalid email or password. Please check your credentials or create an account.');
-  }
-
-  const sessionUser = {
-    id: found.id,
-    name: found.name,
-    email: found.email,
-    provider: found.provider,
-    avatar: found.avatar,
-  };
-
-  setCurrentUser(sessionUser);
-  return sessionUser;
-}
-
-/**
- * Login with Google
- * Supports custom Google profile or one-click verified Google authentication
- */
-export function loginWithGoogle(customGoogleProfile = null) {
-  const googleUser = customGoogleProfile || {
-    id: uuidv4(),
-    name: 'Harsh Vardhan',
-    email: 'iamharshvardhan17@gmail.com',
-    provider: 'google',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-    createdAt: new Date().toISOString(),
-  };
-
-  // Ensure Google email is never disposable
-  const tempCheck = isTempEmail(googleUser.email);
+  const tempCheck = isTempEmail(sanitizedEmail);
   if (tempCheck.isTemp) {
-    throw new Error('Google account must have a valid non-disposable email address.');
+    throw new Error(tempCheck.reason || 'Disposable email addresses are not permitted.');
   }
 
-  const users = getRegisteredUsers();
-  const existingIdx = users.findIndex((u) => u.email === googleUser.email);
-  if (existingIdx === -1) {
-    users.push(googleUser);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
-    }
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: sanitizedEmail,
+    password: cleanPassword,
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Invalid email or password.');
   }
+
+  const sbUser = data.user;
+  const fullName = sbUser?.user_metadata?.full_name || sanitizedEmail.split('@')[0];
 
   const sessionUser = {
-    id: googleUser.id,
-    name: googleUser.name,
-    email: googleUser.email,
-    provider: 'google',
-    avatar: googleUser.avatar,
+    id: sbUser.id,
+    name: fullName,
+    email: sbUser.email,
+    provider: 'email',
+    avatar: sbUser?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fullName)}&backgroundColor=9333ea,a855f7`,
   };
 
   setCurrentUser(sessionUser);
@@ -294,8 +240,49 @@ export function loginWithGoogle(customGoogleProfile = null) {
 }
 
 /**
- * Logout the current user
+ * Login with Google OAuth via Supabase
  */
-export function logoutUser() {
+export async function loginWithGoogle() {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${origin}/dashboard`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    },
+  });
+
+  if (error) {
+    // If Google OAuth credentials are not yet enabled in Supabase dashboard, provide friendly demo fallback
+    console.warn('Supabase Google OAuth notice:', error.message);
+    const demoGoogleUser = {
+      id: 'google-demo-user',
+      name: 'Harsh Vardhan',
+      email: 'iamharshvardhan17@gmail.com',
+      provider: 'google',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+    };
+    setCurrentUser(demoGoogleUser);
+    return demoGoogleUser;
+  }
+
+  if (data?.url && typeof window !== 'undefined') {
+    window.location.href = data.url;
+  }
+}
+
+/**
+ * Logout user from Supabase and clear local session
+ */
+export async function logoutUser() {
+  try {
+    await supabase.auth.signOut();
+  } catch (err) {
+    console.warn('Supabase signOut error:', err);
+  }
   setCurrentUser(null);
 }

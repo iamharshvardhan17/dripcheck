@@ -40,16 +40,16 @@ export default function LoginPage() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
       if (mode === 'signup') {
-        registerWithEmail({ name, email, password });
+        await registerWithEmail({ name, email, password });
       } else {
-        loginWithEmail({ email, password });
+        await loginWithEmail({ email, password });
       }
       router.push('/dashboard');
     } catch (err) {
@@ -59,11 +59,11 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setError('');
     setLoading(true);
     try {
-      loginWithGoogle();
+      await loginWithGoogle();
       router.push('/dashboard');
     } catch (err) {
       setError(err.message || 'Google sign-in failed.');
