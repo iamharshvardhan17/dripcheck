@@ -17,7 +17,11 @@ import {
   Zap,
 } from 'lucide-react';
 
+import { useState } from 'react';
+
 export default function LandingPage() {
+  const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' | 'yearly'
+
   const steps = [
     {
       number: '01',
@@ -71,52 +75,65 @@ export default function LandingPage() {
 
   const tiers = [
     {
-      name: 'Free',
-      price: '$0',
-      period: 'forever',
-      description: 'Essential closet organization for everyday style enthusiasts.',
+      id: 'basic',
+      name: 'Basic',
+      monthlyPrice: 4.99,
+      yearlyMonthlyEquivalent: 4.99,
+      yearlyTotal: 59.88,
+      discount: null,
+      description: 'Essential smart closet organization and styling algorithm for personal wardrobes.',
       highlight: false,
       features: [
-        'Up to 30 wardrobe items',
-        'Basic outfit matching algorithm',
-        'Standard color & season tags',
-        'Local browser storage & sync',
+        'Up to 100 wardrobe items',
+        'Smart color harmony & outfit matching',
+        'Occasion & season contextual filters',
+        'Favorites & custom lookbooks',
+        'Cost-per-wear tracking',
       ],
-      buttonText: 'Get Started Free',
-      buttonStyle: 'bg-white text-gray-800 border border-gray-200 hover:bg-gray-50',
+      buttonText: 'Get Started with Basic',
+      buttonStyle: 'bg-white text-gray-800 border border-gray-200 hover:bg-gray-50 hover:border-gray-300',
     },
     {
+      id: 'pro',
       name: 'Pro',
-      price: '$4.99',
-      period: 'per month',
       badge: 'Most Popular',
-      description: 'Full AI-powered stylist experience for the organized fashion lover.',
+      monthlyPrice: 9.99,
+      yearlyMonthlyEquivalent: 8.99, // 10% off
+      yearlyTotal: 107.89, // 10% off ($9.99 * 12 * 0.90)
+      discount: '10% OFF',
+      description: 'Full AI-powered stylist experience with unlimited items and advanced recommendations.',
       highlight: true,
       features: [
         'Unlimited wardrobe items',
-        'Advanced AI occasion matching',
-        'Complete outfit history & favorites',
-        'Cost-per-wear analytics & insights',
-        'Priority feature updates',
+        'Advanced AI occasion & color matching',
+        'Weather & season automated forecasts',
+        'Deep closet analytics & wear frequency',
+        'High-resolution cloud image backups',
+        'Priority feature updates & styling tips',
       ],
-      buttonText: 'Start Pro Trial',
+      buttonText: 'Start Pro Plan',
       buttonStyle: 'bg-brand-600 text-white hover:bg-brand-700 shadow-md shadow-brand-200 hover:shadow-lg',
     },
     {
-      name: 'Team & Family',
-      price: '$9.99',
-      period: 'per month',
-      description: 'Shared wardrobe access for partners, families, and creative teams.',
+      id: 'family',
+      name: 'Family',
+      badge: 'Share with 5 People',
+      monthlyPrice: 29.99,
+      yearlyMonthlyEquivalent: 26.99, // 10% off
+      yearlyTotal: 323.89, // 10% off ($29.99 * 12 * 0.90)
+      discount: '10% OFF',
+      description: 'Shared wardrobe access for up to 5 family members or partners with shared closets.',
       highlight: false,
       features: [
-        'Up to 5 wardrobe profiles',
+        'Shared access for up to 5 family members',
+        '5 individual private wardrobe profiles',
         'Shared borrowing & clothing lending tags',
-        'Collaborative outfit planning',
-        'All Pro styling algorithms',
-        'Dedicated styling support',
+        'Collaborative family outfit planning',
+        'All Pro AI styling engines for everyone',
+        'Dedicated VIP styling support',
       ],
-      buttonText: 'Choose Team',
-      buttonStyle: 'bg-white text-gray-800 border border-gray-200 hover:bg-gray-50',
+      buttonText: 'Get Family Plan',
+      buttonStyle: 'bg-white text-gray-800 border border-gray-200 hover:bg-gray-50 hover:border-gray-300',
     },
   ];
 
@@ -188,7 +205,7 @@ export default function LandingPage() {
               href="/dashboard"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full text-base font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-lg shadow-brand-500/25 hover:shadow-xl hover:shadow-brand-500/35 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
             >
-              <span>Start Organizing — It&apos;s Free</span>
+              <span>Start Organizing Today</span>
               <ArrowRight className="w-5 h-5" />
             </Link>
             <Link
@@ -312,9 +329,9 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-20 lg:py-28 bg-white border-t border-gray-100">
+      <section id="pricing" className="py-20 lg:py-28 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="text-center max-w-3xl mx-auto mb-12">
             <h2 className="text-xs uppercase tracking-widest font-bold text-brand-600 mb-2">
               Pricing Plans
             </h2>
@@ -322,63 +339,125 @@ export default function LandingPage() {
               Simple, Transparent Pricing
             </p>
             <p className="mt-4 text-gray-600 text-base sm:text-lg">
-              Start free today and upgrade whenever your closet collection expands.
+              Choose the plan that fits your closet size. Save 10% on Pro and Family with yearly billing.
             </p>
+
+            {/* Monthly / Yearly Billing Toggle */}
+            <div className="mt-8 inline-flex items-center gap-3 p-1.5 rounded-full bg-gray-100 border border-gray-200 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setBillingCycle('monthly')}
+                className={`px-5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                  billingCycle === 'monthly'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Monthly Billing
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingCycle('yearly')}
+                className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                  billingCycle === 'yearly'
+                    ? 'bg-brand-600 text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <span>Yearly Billing</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                  billingCycle === 'yearly'
+                    ? 'bg-brand-800 text-white'
+                    : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  10% OFF
+                </span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch max-w-6xl mx-auto">
-            {tiers.map((tier) => (
-              <div
-                key={tier.name}
-                className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-200 ${
-                  tier.highlight
-                    ? 'bg-brand-50/70 border-2 border-brand-500 shadow-xl lg:-translate-y-2'
-                    : 'bg-white border border-gray-200 hover:border-gray-300 shadow-sm'
-                }`}
-              >
-                {tier.badge && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-brand-600 text-white text-xs font-bold uppercase tracking-wider px-3.5 py-1 rounded-full shadow-sm">
-                    {tier.badge}
-                  </div>
-                )}
+            {tiers.map((tier) => {
+              const isYearly = billingCycle === 'yearly';
+              const price = isYearly ? tier.yearlyMonthlyEquivalent : tier.monthlyPrice;
+              const hasDiscount = isYearly && tier.discount;
 
-                <div>
-                  <div className="mb-6">
-                    <h3 className="text-xl font-bold text-gray-900">
-                      {tier.name}
-                    </h3>
-                    <p className="text-sm text-gray-500 mt-1 min-h-[40px]">
-                      {tier.description}
-                    </p>
-                  </div>
-
-                  <div className="flex items-baseline gap-1 mb-6">
-                    <span className="text-4xl font-extrabold text-gray-900">
-                      {tier.price}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      /{tier.period}
-                    </span>
-                  </div>
-
-                  <ul className="space-y-3.5 mb-8">
-                    {tier.features.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
-                        <Check className="w-4 h-4 text-brand-600 mt-0.5 flex-shrink-0" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <Link
-                  href="/dashboard"
-                  className={`w-full py-3 px-4 rounded-xl font-semibold text-sm text-center transition-all ${tier.buttonStyle}`}
+              return (
+                <div
+                  key={tier.id}
+                  className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-200 ${
+                    tier.highlight
+                      ? 'bg-brand-50/70 border-2 border-brand-500 shadow-xl lg:-translate-y-2'
+                      : 'bg-white border border-gray-200 hover:border-gray-300 shadow-sm'
+                  }`}
                 >
-                  {tier.buttonText}
-                </Link>
-              </div>
-            ))}
+                  {/* Badge */}
+                  {tier.badge && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-brand-600 text-white text-xs font-bold uppercase tracking-wider px-3.5 py-1 rounded-full shadow-sm flex items-center gap-1 whitespace-nowrap">
+                      <span>{tier.badge}</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {tier.name}
+                        </h3>
+                        {hasDiscount && (
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full">
+                            {tier.discount}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 min-h-[40px]">
+                        {tier.description}
+                      </p>
+                    </div>
+
+                    <div className="mb-6">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-4xl font-extrabold text-gray-900">
+                          ${price.toFixed(2)}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          /month
+                        </span>
+                      </div>
+                      {isYearly && tier.id !== 'basic' ? (
+                        <p className="text-xs text-brand-600 font-semibold mt-1">
+                          Billed annually at ${tier.yearlyTotal.toFixed(2)}/yr (Save 10%)
+                        </p>
+                      ) : isYearly ? (
+                        <p className="text-xs text-gray-400 mt-1">
+                          Billed monthly at $4.99/mo
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-1">
+                          Billed monthly
+                        </p>
+                      )}
+                    </div>
+
+                    <ul className="space-y-3.5 mb-8">
+                      {tier.features.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
+                          <Check className="w-4 h-4 text-brand-600 mt-0.5 flex-shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <Link
+                    href="/dashboard"
+                    className={`w-full py-3.5 px-4 rounded-xl font-semibold text-sm text-center transition-all ${tier.buttonStyle}`}
+                  >
+                    {tier.buttonText}
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
