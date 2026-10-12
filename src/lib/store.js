@@ -1,7 +1,9 @@
+import { supabase } from './supabase';
+
 const STORAGE_KEY = 'wardrobe_clothes';
 
 /**
- * Safe retrieval of clothes array from localStorage
+ * Safe retrieval of clothes array from localStorage (with cloud background sync)
  * @returns {Array} clothes array
  */
 export function getClothes() {
@@ -16,6 +18,50 @@ export function getClothes() {
   } catch (error) {
     console.error('Failed to read wardrobe from localStorage:', error);
     return [];
+  }
+}
+
+/**
+ * Async fetch directly from Supabase Cloud Database
+ * @param {string} userId
+ * @returns {Promise<Array>}
+ */
+export async function fetchClothesFromCloud(userId = 'guest') {
+  try {
+    const { data, error } = await supabase
+      .from('clothes')
+      .select('*')
+      .order('date_added', { ascending: false });
+
+    if (error) {
+      console.warn('Supabase fetch notice (fallback to local):', error.message);
+      return getClothes();
+    }
+
+    if (data && Array.isArray(data) && data.length > 0) {
+      // Map database snake_case to app camelCase
+      const mapped = data.map((item) => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        subcategory: item.subcategory,
+        color: item.color,
+        colorName: item.color_name,
+        occasions: item.occasions || [],
+        seasons: item.seasons || [],
+        imageUrl: item.image_url || '',
+        favorite: Boolean(item.favorite),
+        timesWorn: item.times_worn || 0,
+        dateAdded: item.date_added,
+      }));
+
+      saveClothes(mapped);
+      return mapped;
+    }
+    return getClothes();
+  } catch (err) {
+    console.warn('Could not sync with Supabase cloud:', err);
+    return getClothes();
   }
 }
 
@@ -35,7 +81,7 @@ export function saveClothes(clothes) {
 }
 
 /**
- * Add a new clothing item
+ * Add a new clothing item (saves locally and syncs to Supabase Cloud)
  * @param {Object} cloth
  * @returns {Array} updated clothes array
  */
@@ -49,6 +95,32 @@ export function addCloth(cloth) {
   };
   const updated = [newItem, ...current];
   saveClothes(updated);
+
+  // Sync to Supabase in the background
+  if (typeof window !== 'undefined') {
+    supabase
+      .from('clothes')
+      .insert([
+        {
+          id: newItem.id.length === 36 ? newItem.id : undefined,
+          name: newItem.name,
+          category: newItem.category,
+          subcategory: newItem.subcategory,
+          color: newItem.color,
+          color_name: newItem.colorName,
+          occasions: newItem.occasions || [],
+          seasons: newItem.seasons || [],
+          image_url: newItem.imageUrl || '',
+          favorite: newItem.favorite,
+          times_worn: newItem.timesWorn,
+        },
+      ])
+      .then(({ error }) => {
+        if (error) console.warn('Supabase cloud insert notice:', error.message);
+      })
+      .catch((e) => console.warn('Supabase cloud error:', e));
+  }
+
   return updated;
 }
 
@@ -67,6 +139,33 @@ export function updateCloth(id, updates) {
     return item;
   });
   saveClothes(updated);
+
+  // Sync updates to Supabase
+  if (typeof window !== 'undefined') {
+    const dbUpdates = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.category !== undefined) dbUpdates.category = updates.category;
+    if (updates.subcategory !== undefined) dbUpdates.subcategory = updates.subcategory;
+    if (updates.color !== undefined) dbUpdates.color = updates.color;
+    if (updates.colorName !== undefined) dbUpdates.color_name = updates.colorName;
+    if (updates.occasions !== undefined) dbUpdates.occasions = updates.occasions;
+    if (updates.seasons !== undefined) dbUpdates.seasons = updates.seasons;
+    if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
+    if (updates.favorite !== undefined) dbUpdates.favorite = updates.favorite;
+    if (updates.timesWorn !== undefined) dbUpdates.times_worn = updates.timesWorn;
+
+    if (Object.keys(dbUpdates).length > 0) {
+      supabase
+        .from('clothes')
+        .update(dbUpdates)
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.warn('Supabase update notice:', error.message);
+        })
+        .catch((e) => console.warn('Supabase error:', e));
+    }
+  }
+
   return updated;
 }
 
@@ -79,6 +178,19 @@ export function deleteCloth(id) {
   const current = getClothes();
   const updated = current.filter((item) => item.id !== id);
   saveClothes(updated);
+
+  // Sync delete to Supabase
+  if (typeof window !== 'undefined') {
+    supabase
+      .from('clothes')
+      .delete()
+      .eq('id', id)
+      .then(({ error }) => {
+        if (error) console.warn('Supabase delete notice:', error.message);
+      })
+      .catch((e) => console.warn('Supabase error:', e));
+  }
+
   return updated;
 }
 
@@ -89,13 +201,27 @@ export function deleteCloth(id) {
  */
 export function toggleFavorite(id) {
   const current = getClothes();
+  let newStatus = false;
   const updated = current.map((item) => {
     if (item.id === id) {
-      return { ...item, favorite: !item.favorite };
+      newStatus = !item.favorite;
+      return { ...item, favorite: newStatus };
     }
     return item;
   });
   saveClothes(updated);
+
+  if (typeof window !== 'undefined') {
+    supabase
+      .from('clothes')
+      .update({ favorite: newStatus })
+      .eq('id', id)
+      .then(({ error }) => {
+        if (error) console.warn('Supabase toggle error:', error.message);
+      })
+      .catch((e) => console.warn('Supabase error:', e));
+  }
+
   return updated;
 }
 
@@ -106,13 +232,27 @@ export function toggleFavorite(id) {
  */
 export function incrementWear(id) {
   const current = getClothes();
+  let newCount = 1;
   const updated = current.map((item) => {
     if (item.id === id) {
-      return { ...item, timesWorn: (item.timesWorn || 0) + 1 };
+      newCount = (item.timesWorn || 0) + 1;
+      return { ...item, timesWorn: newCount };
     }
     return item;
   });
   saveClothes(updated);
+
+  if (typeof window !== 'undefined') {
+    supabase
+      .from('clothes')
+      .update({ times_worn: newCount })
+      .eq('id', id)
+      .then(({ error }) => {
+        if (error) console.warn('Supabase increment wear error:', error.message);
+      })
+      .catch((e) => console.warn('Supabase error:', e));
+  }
+
   return updated;
 }
 
