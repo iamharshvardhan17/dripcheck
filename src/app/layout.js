@@ -4,8 +4,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'DripCheck — Your Smart Wardrobe',
-  description: 'Manage your wardrobe and get outfit suggestions for any occasion',
+  title: 'Capsul Space — Your Smart Wardrobe Sanctuary',
+  description: 'Curate your wardrobe, discover personalized outfit combinations, and master capsule dressing.',
 };
 
 export default function RootLayout({ children }) {

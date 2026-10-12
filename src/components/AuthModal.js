@@ -92,7 +92,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             <p className="text-xs text-gray-500 mt-0.5">
               {mode === 'login' 
                 ? 'Sign in to access your saved wardrobe and outfits' 
-                : 'Join DripCheck to organize your personal style'}
+                : 'Join Capsul Space to curate your personal style'}
             </p>
           </div>
           <button

@@ -80,7 +80,7 @@ export default function LoginPage() {
             <Shirt className="w-6 h-6" />
           </div>
           <span className="font-extrabold text-2xl tracking-tight text-gray-900">
-            DripCheck
+            Capsul Space
           </span>
         </Link>
         <h2 className="text-2xl font-bold tracking-tight text-gray-900">

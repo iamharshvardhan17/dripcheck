@@ -147,7 +147,7 @@ export default function LandingPage() {
               <Shirt className="w-5 h-5" />
             </div>
             <span className="font-bold text-xl tracking-tight text-brand-700">
-              DripCheck
+              Capsul Space
             </span>
           </Link>
 
@@ -242,7 +242,7 @@ export default function LandingPage() {
               Simple 3-Step Process
             </h2>
             <p className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-              How DripCheck Works
+              How Capsul Space Works
             </p>
             <p className="mt-4 text-gray-600 text-base sm:text-lg">
               Say goodbye to morning decision fatigue in three easy steps.
@@ -471,7 +471,7 @@ export default function LandingPage() {
                 <Shirt className="w-5 h-5" />
               </div>
               <span className="font-bold text-xl text-white tracking-tight">
-                DripCheck
+                Capsul Space
               </span>
             </div>
 
@@ -492,7 +492,7 @@ export default function LandingPage() {
           </div>
 
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
-            <p>&copy; {new Date().getFullYear()} DripCheck Inc. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Capsul Space Inc. All rights reserved.</p>
             <div className="flex items-center gap-6">
               <span>Privacy Policy</span>
               <span>Terms of Service</span>
